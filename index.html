@@ -761,8 +761,15 @@
 
       <!-- Image upload: button + history thumbnails -->
       <div id="image-section">
-        <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
-          <div class="fc-section-label" style="margin-bottom:2px;">Image</div>
+        <div class="fc-section-label" style="margin-bottom:6px;">Image</div>
+        <div class="control-group" id="image-upload-area">
+          <button class="upload-btn" id="upload-btn">Choose image…</button>
+          <div id="history-strip">
+            <div class="fc-section-label" style="margin-bottom:0;">Recent</div>
+            <div class="history-thumbs" id="history-thumbs"></div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px; margin-top:10px;">
           <div class="threshold-row" style="gap:7px;">
             <span class="fc-section-label" style="margin-bottom:0; min-width:54px;">Vividness</span>
             <input type="range" id="img-vivid-slider" min="0" max="100" step="1" value="50" style="width:120px; accent-color:white; cursor:pointer;">
@@ -777,13 +784,6 @@
             <span class="fc-section-label" style="margin-bottom:0; min-width:54px;">Warmth</span>
             <input type="range" id="img-warm-slider" min="-50" max="50" step="1" value="0" style="width:120px; accent-color:white; cursor:pointer;">
             <span class="threshold-val" id="img-warm-val">0</span>
-          </div>
-        </div>
-        <div class="control-group" id="image-upload-area">
-          <button class="upload-btn" id="upload-btn">Choose image…</button>
-          <div id="history-strip">
-            <div class="fc-section-label" style="margin-bottom:0;">Recent</div>
-            <div class="history-thumbs" id="history-thumbs"></div>
           </div>
         </div>
       </div>
