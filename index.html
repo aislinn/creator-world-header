@@ -209,8 +209,31 @@
     background: rgba(255,255,255,0.5); border-radius: 50%;
     transition: transform 0.2s, background 0.2s;
   }
-  .toggle-switch input:checked + .toggle-track { background: rgba(255,255,255,0.45); }
+  .toggle-switch input:checked + .toggle-track { background: #3b82f6; }
   .toggle-switch input:checked + .toggle-track::after { background: white; transform: translateX(12px); }
+
+  /* Locked scrim toggle */
+  #scrim-toggle-wrap.locked { cursor: not-allowed; }
+  #scrim-toggle-wrap.locked .toggle-switch { pointer-events: none; opacity: 0.45; }
+
+  /* Fixed tooltip — rendered on body so overflow:hidden on fc-body doesn't clip it */
+  #scrim-tooltip {
+    position: fixed;
+    transform: translateY(-50%);
+    max-width: 240px;
+    background: #111;
+    color: rgba(255,255,255,0.85);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    padding: 6px 9px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 9999;
+  }
+  #scrim-tooltip.visible { opacity: 1; }
 
   /* ── Image history strip ── */
   #history-strip {
@@ -686,6 +709,7 @@
 </style>
 </head>
 <body>
+<div id="scrim-tooltip"></div>
 
 <!-- Page theme toggle -->
 <button class="theme-toggle" id="theme-toggle">☀ Light mode</button>
@@ -721,18 +745,16 @@
 
       <!-- Solid colour: picker + swatches + scrim toggle -->
       <div id="colour-section">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <div class="fc-section-label" style="margin-bottom:0;">Colour</div>
-            <input type="color" id="color-input" value="#6a5acd">
-          </div>
-          <div class="threshold-row" style="gap:7px;">
-            <span class="fc-section-label" style="margin-bottom:0;">Scrim</span>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+          <div class="fc-section-label" style="margin-bottom:0;">Colour</div>
+          <input type="color" id="color-input" value="#6a5acd">
+          <div class="fc-section-label" style="margin-bottom:0; margin-left:6px;">Gradient</div>
+          <span id="scrim-toggle-wrap">
             <label class="toggle-switch">
-              <input type="checkbox" id="colour-scrim-toggle">
+              <input type="checkbox" id="colour-scrim-toggle" checked>
               <span class="toggle-track"></span>
             </label>
-          </div>
+          </span>
         </div>
         <div class="swatch-grid" id="swatch-grid"></div>
       </div>
@@ -1077,11 +1099,20 @@ function applyColor(hex) {
   bannerScrim.style.setProperty('--scrim-g', dg);
   bannerScrim.style.setProperty('--scrim-b', db);
 
+  // Lock the scrim toggle when the colour would fail WCAG AA without it.
+  const scrimRequired = textScheme === 'light' && lum > 0.1833;
+  const scrimWrap = document.getElementById('scrim-toggle-wrap');
+  scrimWrap.classList.toggle('locked', scrimRequired);
+  scrimWrap.dataset.tooltip = scrimRequired ? "Gradient can\u2019t be turned off for this colour \u2014 white text won\u2019t be readable without it" : '';
+  if (scrimRequired && !colourScrimEnabled) {
+    colourScrimEnabled = true;
+    colourScrimToggle.checked = true;
+  }
+
   // Baseline scrim for visual consistency; bumped up to the WCAG AA minimum for light-text colours only.
   // Dark-text colours already pass without help, and a dark scrim would reduce their contrast.
   const SCRIM_BASELINE = 0.30;
-  const wcagMin = textScheme === 'light' && lum > 0.1833
-    ? Math.min((1 - 0.1833 / lum) / 0.85, 0.90) : 0;
+  const wcagMin = scrimRequired ? Math.min((1 - 0.1833 / lum) / 0.85, 0.90) : 0;
   const scrimOpacity = colourScrimEnabled ? Math.max(SCRIM_BASELINE, wcagMin) : 0;
   // Set eased gradient stops (fractions of max opacity for smooth roll-off)
   bannerScrim.style.setProperty('--scrim-opacity',   scrimOpacity);
@@ -1113,9 +1144,23 @@ colorInput.addEventListener('input', e => applyColor(e.target.value));
 
 // ─── Colour scrim controls ────────────────────────────────────────────────────
 
-let colourScrimEnabled = false;
+let colourScrimEnabled = true;
 
 const colourScrimToggle = document.getElementById('colour-scrim-toggle');
+const scrimTooltipEl = document.getElementById('scrim-tooltip');
+
+document.getElementById('scrim-toggle-wrap').addEventListener('mouseenter', () => {
+  const wrap = document.getElementById('scrim-toggle-wrap');
+  if (!wrap.classList.contains('locked')) return;
+  const r = wrap.getBoundingClientRect();
+  scrimTooltipEl.textContent = wrap.dataset.tooltip;
+  scrimTooltipEl.style.left = (r.right + 8) + 'px';
+  scrimTooltipEl.style.top = (r.top + r.height / 2) + 'px';
+  scrimTooltipEl.classList.add('visible');
+});
+document.getElementById('scrim-toggle-wrap').addEventListener('mouseleave', () => {
+  scrimTooltipEl.classList.remove('visible');
+});
 
 colourScrimToggle.addEventListener('change', () => {
   colourScrimEnabled = colourScrimToggle.checked;
