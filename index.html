@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banner Legibility — Interactive Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d0d;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  /* ── Page theme toggle ── */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    z-index: 500;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 6px 14px;
+    color: rgba(255,255,255,0.85);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .theme-toggle:hover { background: rgba(0,0,0,0.65); }
+
+  /* ── Light mode — page chrome only, banner untouched ── */
+  body.light-mode { background: #ffffff; color: #111; }
+  body.light-mode .theme-toggle {
+    background: rgba(255,255,255,0.75);
+    border-color: rgba(0,0,0,0.15);
+    color: rgba(0,0,0,0.65);
+  }
+  body.light-mode .theme-toggle:hover { background: rgba(255,255,255,0.95); }
+  body.light-mode .profile-bio  { color: #111; }
+  body.light-mode .profile-links { color: #1a5cbf; }
+  body.light-mode .ps-value { color: #111; }
+  body.light-mode .ps-label { color: rgba(0,0,0,0.5); }
+  body.light-mode .btn-follow  { background: #111; color: #fff; }
+  body.light-mode .btn-follow:hover { background: #333; }
+  body.light-mode .btn-member  { background: rgba(0,0,0,0.1); color: #111; }
+  body.light-mode .btn-member:hover { background: rgba(0,0,0,0.18); }
+
+  /* ── Floating controls panel — bottom bar ── */
+  .floating-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #1a1a1a;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+  }
+  .fc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .fc-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .fc-toggle {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+    transition: color 0.15s, transform 0.2s;
+  }
+  .fc-toggle:hover { color: rgba(255,255,255,0.8); }
+  .fc-toggle.collapsed { transform: rotate(180deg); }
+  .fc-body {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+    padding: 14px 24px;
+    height: 158px;        /* locked — never grows or shrinks between modes */
+    overflow: hidden;
+  }
+  .fc-body.hidden { display: none; }
+  /* Vertical section divider */
+  .fc-divider {
+    width: 1px;
+    align-self: stretch;
+    background: rgba(255,255,255,0.08);
+    margin: 0 20px;
+    flex-shrink: 0;
+  }
+  /* Each logical group of controls */
+  .fc-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .fc-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  /* Controls within a section flow horizontally */
+  .fc-section-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: nowrap;
+  }
+  /* Fixed-width swap zone — colour and image content share the same footprint */
+  .fc-swap {
+    width: 320px;
+    flex-shrink: 0;
+  }
+  #colour-section { display: block; }
+  #image-section  { display: none; }
+  .control-group { display: flex; flex-direction: column; gap: 8px; }
+  label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; text-transform: uppercase; }
+  input[type="color"] {
+    width: 56px; height: 40px; border: none; border-radius: 8px;
+    cursor: pointer; padding: 2px; background: #2a2a2a;
+  }
+  .mode-toggle {
+    display: flex; gap: 8px;
+  }
+  .mode-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+    background: transparent; color: rgba(255,255,255,0.6); font-size: 13px;
+    font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .mode-btn.active { background: white; color: #111; border-color: white; }
+  #image-upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* image-section visibility controlled by its parent, not itself */
+  .upload-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.3);
+    background: transparent; color: rgba(255,255,255,0.7); font-size: 13px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .upload-btn:hover { border-color: rgba(255,255,255,0.6); }
+  #file-input { display: none; }
+
+  .threshold-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .threshold-row input[type="range"] {
+    width: 140px;
+    accent-color: white;
+    cursor: pointer;
+  }
+  .threshold-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    min-width: 32px;
+  }
+
+  /* ── Image history strip ── */
+  #history-strip {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  #history-strip.visible { display: flex; }
+  .history-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .history-thumbs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+    max-width: 320px;
+  }
+  .history-thumb {
+    width: 64px;
+    height: 40px;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    flex-shrink: 0;
+    transition: border-color 0.15s, transform 0.1s, opacity 0.15s;
+    opacity: 0.65;
+  }
+  .history-thumb:hover { opacity: 1; transform: scale(1.06); }
+  .history-thumb.active { border-color: white; opacity: 1; }
+  .history-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* ── Banner ── */
+  .banner-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 1;   /* 16:4 — height tracks width */
+    max-height: 450px;      /* stop growing at ~1800px viewport width */
+    min-height: 200px;      /* floor for very small screens */
+    overflow: hidden;
+  }
+  #banner-bg {
+    position: absolute;
+    inset: 0;
+    background: #ff6d6d; /* matches Figma default */
+    transition: background 0.2s;
+  }
+  #banner-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+    /* crossOrigin set via JS before src is assigned */
+  }
+  #banner-scrim {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transition: --scrim-opacity 0.3s;
+  }
+
+  /* Solid colour: short, subtle vignette just for depth */
+  .banner-wrapper.mode-color #banner-scrim {
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, var(--scrim-opacity, 0)) 0%,
+      transparent 40%
+    );
+  }
+
+  /* Image: dual gradient — both layers use the darkened image colour, not pure black */
+  .banner-wrapper.mode-image #banner-scrim {
+    background:
+      linear-gradient(to top,
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.80) 0%,
+        transparent 58%
+      ),
+      linear-gradient(to top,
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), var(--scrim-opacity, 0.45)) 0%,
+        transparent 90%
+      );
+  }
+
+  /* Blur plate: frosted-glass strip behind text — image mode only */
+
+  @property --scrim-opacity { syntax: '<number>'; initial-value: 0.45; inherits: false; }
+  @property --scrim-r  { syntax: '<integer>'; initial-value: 0;   inherits: false; }
+  @property --scrim-g  { syntax: '<integer>'; initial-value: 0;   inherits: false; }
+  @property --scrim-b  { syntax: '<integer>'; initial-value: 0;   inherits: false; }
+  @property --scrim-lr { syntax: '<integer>'; initial-value: 255; inherits: false; }
+  @property --scrim-lg { syntax: '<integer>'; initial-value: 255; inherits: false; }
+  @property --scrim-lb { syntax: '<integer>'; initial-value: 255; inherits: false; }
+
+  /* ── Banner inner — constrains text to max 1100px centred in the banner ── */
+  .banner-inner {
+    position: absolute;
+    inset: 0;
+    max-width: 1100px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+  }
+  .banner-inner > * { pointer-events: auto; }
+
+  @media (max-width: 600px) {
+    #banner-text { left: 24px; bottom: 28px; }
+  }
+
+  /* ── Banner text ── */
+  #banner-text {
+    position: absolute;
+    bottom: 40px;
+    left: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 1;
+  }
+  .chips { display: flex; gap: 8px; }
+  .chip {
+    padding: 6px 16px;
+    border-radius: 1000px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .creator-name {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 500;
+    letter-spacing: -1.5px;
+    line-height: 1.15;
+    transition: color 0.2s, text-shadow 0.2s;
+  }
+  .social-proof {
+    font-size: 15px;
+    transition: color 0.2s;
+  }
+
+  /* No text-shadow on solid colour backgrounds — the bg is uniform */
+  #banner-text.solid-color .creator-name { text-shadow: none !important; }
+
+  /* ── Image-mode overrides: stronger local legibility ── */
+
+  /* Chips: dark pill so they read on any image */
+  .banner-wrapper.mode-image #banner-text.light .chip {
+    background: rgba(0, 0, 0, 0.42);
+    border-color: rgba(255, 255, 255, 0.20);
+    color: #ffffff;
+  }
+
+  /* Social proof: add shadow it currently lacks */
+  .banner-wrapper.mode-image #banner-text.light .social-proof {
+    text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  }
+
+  /* Dark scheme on images: light wash + opaque chips + white glow to separate from busy bg */
+  .banner-wrapper.scheme-dark.mode-image #banner-scrim {
+    background: linear-gradient(to top,
+      rgba(var(--scrim-lr, 255), var(--scrim-lg, 255), var(--scrim-lb, 255), 0.70) 0%,
+      transparent 85%
+    );
+  }
+  .banner-wrapper.scheme-dark.mode-image #banner-text.dark .chip {
+    background: rgba(255, 255, 255, 0.80);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #111111;
+  }
+  .banner-wrapper.scheme-dark.mode-image #banner-text.dark .creator-name {
+    text-shadow: 0 1px 8px rgba(255,255,255,0.9), 0 0 24px rgba(255,255,255,0.6);
+  }
+  .banner-wrapper.scheme-dark.mode-image #banner-text.dark .social-proof {
+    text-shadow: 0 1px 4px rgba(255,255,255,0.8);
+  }
+  /* Light halo for dark scheme — white radial glow instead of dark */
+  .banner-wrapper.scheme-dark.mode-image #banner-text-glow {
+    display: block !important;
+    background: radial-gradient(ellipse 92% 90% at 18% 100%,
+      rgba(var(--scrim-lr, 255), var(--scrim-lg, 255), var(--scrim-lb, 255), 0.55) 0%,
+      transparent 80%
+    );
+  }
+
+  /* Soft dark halo behind text block, full-width so it reaches banner edges */
+  #banner-text-glow {
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 65%;
+    background: radial-gradient(ellipse 92% 90% at 18% 100%,
+      rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.75) 0%,
+      transparent 80%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+  .banner-wrapper.mode-image #banner-text-glow { display: block; }
+
+  /* Light scheme */
+  #banner-text.light .chip {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+  }
+  #banner-text.light .creator-name {
+    color: #ffffff;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 2px 12px rgba(0,0,0,0.3);
+  }
+  #banner-text.light .social-proof { color: rgba(255, 255, 255, 0.65); }
+
+  /* Dark scheme */
+  #banner-text.dark .chip {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.15);
+    color: #111111;
+  }
+  #banner-text.dark .creator-name {
+    color: #111111;
+    text-shadow: none;
+  }
+  #banner-text.dark .social-proof { color: rgba(0, 0, 0, 0.55); }
+
+  /* ── Stats panel ── */
+  .stats-panel {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .colour-debug {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .colour-debug.visible { display: grid; }
+  .colour-debug-card {
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .colour-swatch-block {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .colour-debug-info { display: flex; flex-direction: column; gap: 3px; }
+  .colour-debug-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .colour-debug-hex {
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+  }
+  .colour-debug-rgb {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    font-family: monospace;
+  }
+  .stat-card {
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .stat-label-small {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+  .stat-value.good { color: #4ade80; }
+  .stat-value.warn { color: #facc15; }
+  .stat-value.bad  { color: #f87171; }
+
+  /* ── Swatch grid ── */
+  .swatch-section h2 {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .swatch-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .swatch {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.1s, border-color 0.1s;
+  }
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.active { border-color: white; }
+
+  /* ── Profile content section ── */
+  .profile-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 60px 0;
+  }
+  .profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 40px;
+  }
+  .profile-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .profile-bio {
+    font-size: 18px;
+    line-height: 1.52;
+    color: white;
+    max-width: 600px;
+    letter-spacing: -0.18px;
+  }
+  .profile-links {
+    font-size: 16px;
+    color: #a2badf;
+    letter-spacing: -0.32px;
+    font-weight: 500;
+  }
+  .profile-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .btn-follow, .btn-member {
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.14px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-follow {
+    background: white;
+    color: #111;
+  }
+  .btn-follow:hover { background: #e8e8e8; }
+  .btn-member {
+    background: rgba(120, 119, 118, 0.42);
+    color: white;
+  }
+  .btn-member:hover { background: rgba(120, 119, 118, 0.60); }
+  .profile-stats-row {
+    display: flex;
+    gap: 48px;
+    align-items: flex-start;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .profile-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ps-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: white;
+    letter-spacing: -0.44px;
+    line-height: 1.3;
+  }
+  .ps-label {
+    font-size: 14px;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: -0.14px;
+  }
+
+  /* ── Stats / debug inside floating panel — unified card size ── */
+  .fc-body .stats-panel {
+    display: grid;
+    grid-template-columns: repeat(2, 100px);
+    gap: 6px;
+    margin-bottom: 0;
+  }
+  .fc-body .stat-card {
+    padding: 7px 10px;
+    height: 52px;
+    box-sizing: border-box;
+  }
+  .fc-body .stat-value { font-size: 14px; }
+  .fc-body .stat-label-small { white-space: nowrap; font-size: 10px; }
+
+  /* Colour debug — same grid/card as stats, always occupies space (visibility not display) */
+  .fc-body .colour-debug {
+    display: grid;
+    grid-template-columns: repeat(2, 100px);
+    gap: 6px;
+    margin-bottom: 0;
+    visibility: hidden;   /* takes up space but invisible until image is loaded */
+  }
+  .fc-body .colour-debug.visible { visibility: visible; }
+  /* Inline swatch + hex on a single value row */
+  .colour-val-row { display: flex; align-items: center; gap: 5px; }
+  .colour-swatch-inline {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .fc-body .swatch { width: 28px; height: 28px; border-radius: 5px; }
+  .fc-body .swatch-grid { flex-wrap: wrap; max-width: 220px; gap: 6px; }
+
+  /* Body padding so content isn't hidden behind the bar */
+  body { padding-bottom: 130px; }
+
+  @media (max-width: 640px) {
+    .profile-header { flex-direction: column; gap: 24px; }
+    .profile-stats-row { text-align: left; }
+    .profile-content { padding-left: 24px; padding-right: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Page theme toggle -->
+<button class="theme-toggle" id="theme-toggle">☀ Light mode</button>
+
+<!-- Floating controls panel -->
+<div class="floating-controls" id="floating-controls">
+  <div class="fc-header">
+    <span class="fc-title">Banner Demo</span>
+    <button class="fc-toggle" id="fc-toggle" title="Collapse controls">▾</button>
+  </div>
+  <div class="fc-body" id="fc-body">
+
+    <!-- Section 1: Mode buttons + threshold stacked -->
+    <div class="fc-section">
+      <div class="fc-section-label">Mode</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="btn-color">Solid colour</button>
+        <button class="mode-btn" id="btn-image">Image upload</button>
+      </div>
+      <div class="control-group">
+        <label>Light→Dark cutoff</label>
+        <div class="threshold-row">
+          <input type="range" id="threshold-slider" min="0.20" max="0.70" step="0.01" value="0.65">
+          <span class="threshold-val" id="threshold-val">0.65</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fc-divider"></div>
+
+    <!-- Section 2: Swap — colour picker+swatches OR image upload+history, same fixed space -->
+    <div class="fc-section fc-swap">
+
+      <!-- Solid colour: picker + swatches -->
+      <div id="colour-section">
+        <div class="fc-section-label">Colour</div>
+        <div class="fc-section-row" style="align-items: flex-end;">
+          <div class="control-group" id="color-picker-area">
+            <input type="color" id="color-input" value="#ff6d6d">
+          </div>
+          <div class="swatch-grid" id="swatch-grid"></div>
+        </div>
+      </div>
+
+      <!-- Image upload: button + history thumbnails -->
+      <div id="image-section">
+        <div class="fc-section-label">Image</div>
+        <div class="control-group" id="image-upload-area">
+          <button class="upload-btn" id="upload-btn">Choose image…</button>
+          <div id="history-strip">
+            <span class="history-label">Recent</span>
+            <div class="history-thumbs" id="history-thumbs"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Section 3: Stats — lowest priority, pinned right -->
+    <div class="fc-section" style="margin-left: auto;">
+      <div class="fc-section-label">Stats</div>
+      <div class="fc-section-row" style="align-items: flex-start;">
+        <div class="stats-panel">
+          <div class="stat-card">
+            <div class="stat-label-small">Luminance</div>
+            <div class="stat-value" id="stat-luminance">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label-small">Scrim opacity</div>
+            <div class="stat-value" id="stat-scrim">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label-small">Text scheme</div>
+            <div class="stat-value" id="stat-scheme">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label-small">WCAG AA (4.5:1)</div>
+            <div class="stat-value" id="stat-wcag">—</div>
+          </div>
+        </div>
+        <!-- Colour debug — same card size as stats, visible only in image mode -->
+        <div class="colour-debug" id="colour-debug">
+          <div class="stat-card">
+            <div class="stat-label-small">Extracted</div>
+            <div class="stat-value colour-val-row">
+              <div class="colour-swatch-inline" id="debug-swatch-extracted"></div>
+              <span id="debug-hex-extracted">—</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label-small">Scrim colour</div>
+            <div class="stat-value colour-val-row">
+              <div class="colour-swatch-inline" id="debug-swatch-scrim"></div>
+              <span id="debug-hex-scrim">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Banner preview -->
+<div class="banner-wrapper mode-color" id="banner-wrapper">
+  <div id="banner-bg"></div>
+  <img id="banner-image" alt="Banner">
+  <div id="banner-scrim"></div>
+  <div id="banner-text-glow"></div>
+  <div class="banner-inner">
+  <div id="banner-text" class="light">
+    <div class="creator-name">Creator Name</div>
+    <div class="social-proof">Followed by Scary Pockets and 25K others</div>
+  </div>
+  </div><!-- /.banner-inner -->
+</div>
+
+<!-- Profile content -->
+<div class="profile-content">
+  <div class="profile-header">
+    <div class="profile-left">
+      <div class="profile-bio">Better Home Cooking Through Science. I explore how and why recipes work to empower you to bring more joy into your home kitchen.</div>
+      <div class="profile-links">www.instagram.com + 3 more</div>
+      <div class="profile-actions">
+        <button class="btn-follow">Follow</button>
+        <button class="btn-member">Become a member</button>
+      </div>
+    </div>
+    <div class="profile-stats-row">
+      <div class="profile-stat">
+        <span class="ps-value">25.5k</span>
+        <span class="ps-label">Followers</span>
+      </div>
+      <div class="profile-stat">
+        <span class="ps-value">$3.1k</span>
+        <span class="ps-label">Monthly</span>
+      </div>
+      <div class="profile-stat">
+        <span class="ps-value">156</span>
+        <span class="ps-label">Posts</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ─── bannerLegibility.js inlined (no bundler) ─────────────────────────────
+
+function linearise(channel) {
+  const c = channel / 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function relativeLuminance(r, g, b) {
+  return 0.2126 * linearise(r) + 0.7152 * linearise(g) + 0.0722 * linearise(b);
+}
+
+function hexToLuminance(hex) {
+  const clean = hex.replace('#', '');
+  const full = clean.length === 3
+    ? clean.split('').map(c => c + c).join('')
+    : clean;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return relativeLuminance(r, g, b);
+}
+
+function sampleImageLuminance(imgEl, regionFraction = 0.45) {
+  try {
+    const { naturalWidth: w, naturalHeight: h } = imgEl;
+    if (!w || !h) return null;
+    const scale = Math.min(1, 400 / Math.max(w, h));
+    const sw = Math.round(w * scale);
+    const sh = Math.round(h * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = sw; canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgEl, 0, 0, sw, sh);
+    const regionY = Math.floor(sh * (1 - regionFraction));
+    const { data } = ctx.getImageData(0, regionY, sw, sh - regionY);
+    let total = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      total += relativeLuminance(data[i], data[i + 1], data[i + 2]);
+    }
+    return total / (data.length / 4);
+  } catch {
+    return null;
+  }
+}
+
+// ─── Colour helpers ──────────────────────────────────────────────────────────
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return [h, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue = (p, q, t) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  return [
+    Math.round(hue(p, q, h + 1/3) * 255),
+    Math.round(hue(p, q, h)       * 255),
+    Math.round(hue(p, q, h - 1/3) * 255),
+  ];
+}
+
+/**
+ * Samples the average RGB colour from the bottom region of an image.
+ * Used to tint the scrim gradient with the image's own palette rather than pure black.
+ * Returns [r, g, b] each 0–255, or null on failure.
+ */
+function sampleImageBottomColor(imgEl, regionFraction = 0.25) {
+  try {
+    const { naturalWidth: w, naturalHeight: h } = imgEl;
+    if (!w || !h) return null;
+    const scale = Math.min(1, 200 / Math.max(w, h));
+    const sw = Math.round(w * scale), sh = Math.round(h * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = sw; canvas.height = sh;
+    canvas.getContext('2d').drawImage(imgEl, 0, 0, sw, sh);
+    const regionY = Math.floor(sh * (1 - regionFraction));
+    const { data } = canvas.getContext('2d').getImageData(0, regionY, sw, sh - regionY);
+
+    // Saturation-weighted average: chromatic pixels dominate, greys/neutrals contribute minimally.
+    // This prevents muddy grey results when the image has both colourful and neutral areas.
+    let rSum = 0, gSum = 0, bSum = 0, wSum = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      // HSV saturation: 0 = grey, 1 = fully saturated
+      const sat = max === 0 ? 0 : (max - min) / max;
+      const weight = Math.max(sat, 0.08); // floor so fully grey images still work
+      rSum += r * weight;
+      gSum += g * weight;
+      bSum += b * weight;
+      wSum += weight;
+    }
+    return [Math.round(rSum / wSum), Math.round(gSum / wSum), Math.round(bSum / wSum)];
+  } catch { return null; }
+}
+
+let DARK_TEXT_THRESHOLD = 0.65;
+
+function computeTextScheme(luminance) {
+  return luminance > DARK_TEXT_THRESHOLD ? 'dark' : 'light';
+}
+
+function computeScrimOpacity(luminance, attenuation = 0.84) {
+  if (luminance <= 0) return 0.20;
+  const required = (1 - 0.1833 / luminance) / attenuation;
+  return Math.min(Math.max(required, 0.20), 0.90);
+}
+
+function meetsWcagAA(luminance, scrimOpacity, attenuation = 0.84) {
+  const effectiveLuminance = luminance * (1 - scrimOpacity * attenuation);
+  return (1.05 / (effectiveLuminance + 0.05)) >= 4.5;
+}
+
+// ─── DOM refs ────────────────────────────────────────────────────────────────
+
+const bannerWrapper  = document.getElementById('banner-wrapper');
+const bannerBg       = document.getElementById('banner-bg');
+const bannerImage    = document.getElementById('banner-image');
+const bannerScrim    = document.getElementById('banner-scrim');
+const bannerText     = document.getElementById('banner-text');
+const colorInput     = document.getElementById('color-input');
+const uploadBtn      = document.getElementById('upload-btn');
+const btnColor       = document.getElementById('btn-color');
+const btnImage       = document.getElementById('btn-image');
+const colourSection  = document.getElementById('colour-section');
+const imageSection   = document.getElementById('image-section');
+
+const statLuminance = document.getElementById('stat-luminance');
+const statScrim     = document.getElementById('stat-scrim');
+const statScheme    = document.getElementById('stat-scheme');
+const statWcag      = document.getElementById('stat-wcag');
+
+// ─── Apply legibility state ───────────────────────────────────────────────────
+
+function applyLuminance(luminance) {
+  if (luminance === null) return;
+
+  const textScheme  = computeTextScheme(luminance);
+  const scrimOpacity = textScheme === 'light' ? computeScrimOpacity(luminance) : 0;
+  const wcagAA      = textScheme === 'dark' ? true : meetsWcagAA(luminance, scrimOpacity);
+
+  // Apply scrim via CSS custom property
+  bannerScrim.style.setProperty('--scrim-opacity', scrimOpacity);
+
+  // Apply text scheme class
+  bannerText.classList.remove('light', 'dark');
+  bannerText.classList.add(textScheme);
+  bannerWrapper.classList.toggle('scheme-dark', textScheme === 'dark');
+
+  // Update stats
+  statLuminance.textContent = luminance.toFixed(3);
+  statLuminance.className = 'stat-value';
+
+  statScrim.textContent = scrimOpacity.toFixed(2);
+  statScrim.className = 'stat-value';
+
+  statScheme.textContent = textScheme === 'light' ? '☀ Light' : '◐ Dark';
+  statScheme.className = 'stat-value';
+
+  statWcag.textContent = wcagAA ? '✓ Pass' : '✗ Fail';
+  statWcag.className = 'stat-value ' + (wcagAA ? 'good' : 'bad');
+}
+
+function applyImageLegibility(imgEl) {
+  const color = sampleImageBottomColor(imgEl);
+  const [r, g, b] = color ?? [128, 128, 128];
+
+  // Build scrim colour: same hue, saturation boosted, lightness reduced.
+  // Plain RGB scaling (×0.25) muddies the colour by collapsing toward grey-black.
+  // HSL lets us darken while keeping — or intensifying — the chroma.
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const [dr, dg, db] = hslToRgb(
+    h,
+    Math.min(s * 1.4, 1.0),   // boost saturation ~40 %, cap at 1
+    Math.max(l * 0.28, 0.04)  // darken to ~28 % of original lightness
+  );
+
+  bannerScrim.style.setProperty('--scrim-r', dr);
+  bannerScrim.style.setProperty('--scrim-g', dg);
+  bannerScrim.style.setProperty('--scrim-b', db);
+  bannerScrim.style.setProperty('--scrim-lr', r);
+  bannerScrim.style.setProperty('--scrim-lg', g);
+  bannerScrim.style.setProperty('--scrim-lb', b);
+
+  // Update colour debug panel
+  const toHex = v => v.toString(16).padStart(2, '0');
+  const hexExtracted = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  const hexScrim     = `#${toHex(dr)}${toHex(dg)}${toHex(db)}`;
+  document.getElementById('debug-swatch-extracted').style.background = hexExtracted;
+  document.getElementById('debug-hex-extracted').textContent = hexExtracted.toUpperCase();
+  document.getElementById('debug-swatch-scrim').style.background = hexScrim;
+  document.getElementById('debug-hex-scrim').textContent = hexScrim.toUpperCase();
+  document.getElementById('colour-debug').classList.add('visible');
+
+  applyLuminance(sampleImageLuminance(imgEl));
+}
+
+// ─── Colour mode ─────────────────────────────────────────────────────────────
+
+function applyColor(hex) {
+  bannerWrapper.classList.replace('mode-image', 'mode-color');
+  bannerBg.style.background = hex;
+  bannerText.classList.add('solid-color');
+  // Solid colour: fixed subtle vignette — luminance-based scrim not needed
+  const lum = hexToLuminance(hex);
+  // Solid colour always uses the WCAG-derived 0.40 threshold — not the image slider value
+  const textScheme = lum > 0.40 ? 'dark' : 'light';
+  // Only show a hint of depth on light-scheme colours; none on dark-scheme
+  const scrimOpacity = textScheme === 'light' ? 0.20 : 0;
+  bannerScrim.style.setProperty('--scrim-opacity', scrimOpacity);
+  bannerText.classList.remove('light', 'dark');
+  bannerText.classList.add(textScheme);
+  // WCAG contrast: white text on light-scheme, near-black (#111) on dark-scheme
+  const textLum      = textScheme === 'light' ? 1.0 : hexToLuminance('#111111');
+  const effectiveBgLum = textScheme === 'light' ? lum * (1 - scrimOpacity * 0.84) : lum;
+  const lighter = Math.max(effectiveBgLum, textLum);
+  const darker  = Math.min(effectiveBgLum, textLum);
+  const contrast = (lighter + 0.05) / (darker + 0.05);
+  const wcagPass = contrast >= 4.5;
+
+  statLuminance.textContent = lum.toFixed(3);
+  statLuminance.className = 'stat-value';
+  statScrim.textContent = scrimOpacity.toFixed(2);
+  statScrim.className = 'stat-value';
+  statScheme.textContent = textScheme === 'light' ? '☀ Light' : '◐ Dark';
+  statScheme.className = 'stat-value';
+  statWcag.textContent = wcagPass ? '✓ Pass' : '✗ Fail';
+  statWcag.className   = 'stat-value ' + (wcagPass ? 'good' : 'bad');
+}
+
+colorInput.addEventListener('input', e => applyColor(e.target.value));
+
+// ─── Image mode ───────────────────────────────────────────────────────────────
+
+// ─── Image history ────────────────────────────────────────────────────────────
+
+const MAX_HISTORY = 10;
+const history = []; // { url: string, thumbDataUrl: string }
+
+const historyStrip  = document.getElementById('history-strip');
+const historyThumbs = document.getElementById('history-thumbs');
+let activeThumbEl = null;
+
+function makeThumbnail(imgEl) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128; canvas.height = 80;
+  canvas.getContext('2d').drawImage(imgEl, 0, 0, 128, 80);
+  return canvas.toDataURL('image/jpeg', 0.75);
+}
+
+function renderHistory() {
+  historyThumbs.innerHTML = '';
+  activeThumbEl = null;
+  history.forEach((entry, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'history-thumb' + (i === 0 ? ' active' : '');
+    if (i === 0) activeThumbEl = thumb;
+    const img = document.createElement('img');
+    img.src = entry.thumbDataUrl;
+    img.alt = '';
+    thumb.appendChild(img);
+    thumb.addEventListener('click', () => applyHistoryEntry(entry, thumb));
+    historyThumbs.appendChild(thumb);
+  });
+  historyStrip.classList.toggle('visible', history.length > 0);
+}
+
+// Shared helper — loads a data URL into the banner and calls onLoaded when ready.
+// Uses a `fired` guard so the callback is invoked exactly once regardless of
+// whether the browser fires onload synchronously, asynchronously, or not at all
+// (some browsers skip onload for cached data URLs — the rAF fallback catches that).
+function loadDataUrlIntoBanner(dataUrl, onLoaded) {
+  let fired = false;
+  const done = () => {
+    if (fired) return;
+    fired = true;
+    bannerImage.onload = null;
+    bannerImage.onerror = null;
+    onLoaded();
+  };
+
+  bannerImage.onerror = null;
+  bannerImage.onload = done;
+  bannerImage.removeAttribute('src');
+  bannerImage.src = dataUrl;
+
+  // Synchronous completion (data URL already in memory)
+  if (bannerImage.complete && bannerImage.naturalWidth > 0) {
+    done();
+    return;
+  }
+
+  // rAF fallback: Safari sometimes skips onload for previously-loaded data URLs.
+  // By the next paint frame the image will be complete if it was already cached.
+  requestAnimationFrame(() => {
+    if (bannerImage.complete && bannerImage.naturalWidth > 0) done();
+  });
+}
+
+function applyHistoryEntry(entry, thumbEl) {
+  if (activeThumbEl) activeThumbEl.classList.remove('active');
+  thumbEl.classList.add('active');
+  activeThumbEl = thumbEl;
+
+  loadDataUrlIntoBanner(entry.dataUrl, () => {
+    bannerWrapper.classList.replace('mode-color', 'mode-image');
+    bannerText.classList.remove('solid-color');
+    bannerBg.style.background = 'transparent';
+    bannerImage.style.display = 'block';
+    applyImageLegibility(bannerImage);
+  });
+}
+
+function addToHistory(dataUrl, imgEl) {
+  const thumbDataUrl = makeThumbnail(imgEl);
+
+  if (history.length >= MAX_HISTORY) history.pop();
+
+  history.unshift({ dataUrl, thumbDataUrl });
+  renderHistory();
+}
+
+// ─── Upload handler ───────────────────────────────────────────────────────────
+
+// Create a fresh <input> on every click — avoids all browser quirks around
+// file input state (same-file change not firing, value reset side-effects, etc.)
+uploadBtn.addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const dataUrl = evt.target.result;
+      loadDataUrlIntoBanner(dataUrl, () => {
+        bannerWrapper.classList.replace('mode-color', 'mode-image');
+        bannerBg.style.background = 'transparent';
+        bannerImage.style.display = 'block';
+        applyImageLegibility(bannerImage);
+        addToHistory(dataUrl, bannerImage);
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+});
+
+// ─── Mode toggle ─────────────────────────────────────────────────────────────
+
+btnColor.addEventListener('click', () => {
+  btnColor.classList.add('active');
+  btnImage.classList.remove('active');
+  colourSection.style.display = 'block';
+  imageSection.style.display  = 'none';
+  bannerImage.style.display = 'none';
+  bannerText.classList.add('solid-color');
+  applyColor(colorInput.value);
+});
+
+btnImage.addEventListener('click', () => {
+  btnImage.classList.add('active');
+  btnColor.classList.remove('active');
+  colourSection.style.display = 'none';
+  imageSection.style.display  = 'block';
+  // Don't remove solid-color yet — keep neutral appearance until an image actually loads
+});
+
+// ─── Swatch grid ─────────────────────────────────────────────────────────────
+
+const SWATCHES = [
+  // Dark → light, covering the full luminance range
+  { hex: '#111111', label: 'Near black'    },
+  { hex: '#1a1a2e', label: 'Deep navy'     },
+  { hex: '#3a2210', label: 'Dark brown'    },
+  { hex: '#4a0e0e', label: 'Dark red'      },
+  { hex: '#2d5a27', label: 'Forest green'  },
+  { hex: '#8b4513', label: 'Saddle brown'  },
+  { hex: '#ff6d6d', label: 'Coral (Figma)' },
+  { hex: '#6a5acd', label: 'Slate blue'    },
+  { hex: '#20b2aa', label: 'Teal'          },
+  { hex: '#ff8c00', label: 'Dark orange'   },
+  { hex: '#ffd700', label: 'Gold'          },
+  { hex: '#90ee90', label: 'Light green'   },
+  { hex: '#add8e6', label: 'Light blue'    },
+  { hex: '#ffb6c1', label: 'Light pink'    },
+  { hex: '#fffacd', label: 'Lemon chiffon' },
+  { hex: '#ffffff', label: 'White'         },
+];
+
+const grid = document.getElementById('swatch-grid');
+let activeSwatchEl = null;
+
+SWATCHES.forEach(({ hex, label }) => {
+  const el = document.createElement('div');
+  el.className = 'swatch';
+  el.style.background = hex;
+  el.title = `${label} — ${hex}`;
+  el.addEventListener('click', () => {
+    if (activeSwatchEl) activeSwatchEl.classList.remove('active');
+    el.classList.add('active');
+    activeSwatchEl = el;
+    // Switch to colour mode if needed
+    btnColor.click();
+    colorInput.value = hex;
+    applyColor(hex);
+  });
+  grid.appendChild(el);
+});
+
+// ─── Threshold slider ────────────────────────────────────────────────────────
+
+const thresholdSlider = document.getElementById('threshold-slider');
+const thresholdVal    = document.getElementById('threshold-val');
+
+thresholdSlider.addEventListener('input', () => {
+  DARK_TEXT_THRESHOLD = parseFloat(thresholdSlider.value);
+  thresholdVal.textContent = DARK_TEXT_THRESHOLD.toFixed(2);
+  // Re-run the current mode so the banner updates immediately
+  if (bannerWrapper.classList.contains('mode-image') && bannerImage.complete && bannerImage.naturalWidth > 0) {
+    applyImageLegibility(bannerImage);
+  } else {
+    applyColor(colorInput.value);
+  }
+});
+
+// ─── Page theme toggle ───────────────────────────────────────────────────────
+
+const themeToggle = document.getElementById('theme-toggle');
+themeToggle.addEventListener('click', () => {
+  const isLight = document.body.classList.toggle('light-mode');
+  themeToggle.textContent = isLight ? '◑ Dark mode' : '☀ Light mode';
+});
+
+// ─── Floating panel toggle ───────────────────────────────────────────────────
+
+const fcToggle = document.getElementById('fc-toggle');
+const fcBody   = document.getElementById('fc-body');
+
+fcToggle.addEventListener('click', () => {
+  const collapsed = fcBody.classList.toggle('hidden');
+  fcToggle.classList.toggle('collapsed', collapsed);
+  fcToggle.title = collapsed ? 'Expand controls' : 'Collapse controls';
+});
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+bannerText.classList.add('solid-color');
+applyColor(colorInput.value);
+</script>
+</body>
+</html>
