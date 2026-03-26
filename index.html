@@ -145,8 +145,14 @@
     width: 56px; height: 40px; border: none; border-radius: 8px;
     cursor: pointer; padding: 2px; background: #2a2a2a;
   }
+  /* Compact picker swatch inside the panel label row */
+  #color-input {
+    width: 28px; height: 28px; border-radius: 5px; padding: 2px;
+    border: 1px solid rgba(255,255,255,0.2); background: none;
+    flex-shrink: 0; align-self: flex-start;
+  }
   .mode-toggle {
-    display: flex; gap: 8px;
+    display: flex; gap: 8px; margin-bottom: 10px;
   }
   .mode-btn {
     padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
@@ -184,6 +190,29 @@
     color: rgba(255,255,255,0.7);
     min-width: 32px;
   }
+
+  /* ── Scrim toggle switch ── */
+  .toggle-switch {
+    position: relative; display: inline-flex;
+    width: 28px; height: 16px; flex-shrink: 0; cursor: pointer;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.15); border-radius: 8px;
+    transition: background 0.2s;
+  }
+  .toggle-track::after {
+    content: ''; position: absolute;
+    width: 12px; height: 12px; left: 2px; top: 2px;
+    background: rgba(255,255,255,0.5); border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track { background: rgba(255,255,255,0.45); }
+  .toggle-switch input:checked + .toggle-track::after { background: white; transform: translateX(12px); }
+  #colour-scrim-slider { width: 100px; accent-color: white; cursor: pointer; }
+  #colour-scrim-slider:disabled { opacity: 0.25; cursor: not-allowed; }
+  #colour-scrim-val.dim { opacity: 0.3; }
 
   /* ── Image history strip ── */
   #history-strip {
@@ -256,12 +285,14 @@
     transition: --scrim-opacity 0.3s;
   }
 
-  /* Solid colour: short, subtle vignette just for depth */
+  /* Solid colour: eased multi-stop scrim, same shape as image mode */
   .banner-wrapper.mode-color #banner-scrim {
-    background: linear-gradient(
-      to top,
-      rgba(0, 0, 0, var(--scrim-opacity, 0)) 0%,
-      transparent 40%
+    background: linear-gradient(to top,
+      rgba(0, 0, 0, var(--scrim-opacity,   0))  0%,
+      rgba(0, 0, 0, var(--scrim-opacity-b, 0)) 22%,
+      rgba(0, 0, 0, var(--scrim-opacity-c, 0)) 44%,
+      rgba(0, 0, 0, var(--scrim-opacity-d, 0)) 62%,
+      transparent                              74%
     );
   }
 
@@ -286,6 +317,9 @@
   /* Blur plate: frosted-glass strip behind text — image mode only */
 
   @property --scrim-opacity { syntax: '<number>'; initial-value: 0.45; inherits: false; }
+  @property --scrim-opacity-b { syntax: '<number>'; initial-value: 0; inherits: false; }
+  @property --scrim-opacity-c { syntax: '<number>'; initial-value: 0; inherits: false; }
+  @property --scrim-opacity-d { syntax: '<number>'; initial-value: 0; inherits: false; }
   @property --scrim-r  { syntax: '<integer>'; initial-value: 0;   inherits: false; }
   @property --scrim-g  { syntax: '<integer>'; initial-value: 0;   inherits: false; }
   @property --scrim-b  { syntax: '<integer>'; initial-value: 0;   inherits: false; }
@@ -307,9 +341,6 @@
   }
   .banner-inner > * { pointer-events: auto; }
 
-  @media (max-width: 600px) {
-    #banner-text { left: 24px; bottom: 28px; }
-  }
 
   /* ── Banner text ── */
   #banner-text {
@@ -645,16 +676,15 @@
   }
 
   .fc-body .swatch { width: 28px; height: 28px; border-radius: 5px; }
-  .fc-body .swatch-grid { flex-wrap: wrap; max-width: 220px; gap: 6px; }
+  .fc-body .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 28px);
+    gap: 6px;
+  }
 
   /* Body padding so content isn't hidden behind the bar */
   body { padding-bottom: 160px; }
 
-  @media (max-width: 640px) {
-    .profile-header { flex-direction: column; gap: 24px; }
-    .profile-stats-row { text-align: left; }
-    .profile-content { padding-left: 24px; padding-right: 24px; }
-  }
 </style>
 </head>
 <body>
@@ -691,15 +721,24 @@
     <!-- Section 2: Swap — colour picker+swatches OR image upload+history, same fixed space -->
     <div class="fc-section fc-swap">
 
-      <!-- Solid colour: picker + swatches -->
+      <!-- Solid colour: picker + swatches + scrim toggle -->
       <div id="colour-section">
-        <div class="fc-section-label">Colour</div>
-        <div class="fc-section-row" style="align-items: flex-start;">
-          <div class="control-group" id="color-picker-area">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="fc-section-label" style="margin-bottom:0;">Colour</div>
             <input type="color" id="color-input" value="#6a5acd">
           </div>
-          <div class="swatch-grid" id="swatch-grid"></div>
+          <div class="threshold-row" style="gap:7px;">
+            <span class="fc-section-label" style="margin-bottom:0;">Scrim</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="colour-scrim-toggle">
+              <span class="toggle-track"></span>
+            </label>
+            <input type="range" id="colour-scrim-slider" min="0" max="100" step="1" value="40" disabled>
+            <span class="threshold-val dim" id="colour-scrim-val">40</span>
+          </div>
         </div>
+        <div class="swatch-grid" id="swatch-grid"></div>
       </div>
 
       <!-- Image upload: button + history thumbnails -->
@@ -708,7 +747,7 @@
         <div class="control-group" id="image-upload-area">
           <button class="upload-btn" id="upload-btn">Choose image…</button>
           <div id="history-strip">
-            <span class="history-label">Recent</span>
+            <div class="fc-section-label" style="margin-bottom:0;">Recent</div>
             <div class="history-thumbs" id="history-thumbs"></div>
           </div>
         </div>
@@ -1029,18 +1068,21 @@ function applyColor(hex) {
   bannerWrapper.classList.replace('mode-image', 'mode-color');
   bannerBg.style.background = hex;
   bannerText.classList.add('solid-color');
-  // Solid colour: fixed subtle vignette — luminance-based scrim not needed
   const lum = hexToLuminance(hex);
-  // Solid colour always uses the WCAG-derived 0.40 threshold — not the image slider value
   const textScheme = lum > 0.40 ? 'dark' : 'light';
-  // Only show a hint of depth on light-scheme colours; none on dark-scheme
-  const scrimOpacity = textScheme === 'light' ? 0.20 : 0;
-  bannerScrim.style.setProperty('--scrim-opacity', scrimOpacity);
+  // Use manually set scrim when toggled on, otherwise none
+  const scrimOpacity = colourScrimEnabled ? colourScrimLevel / 100 : 0;
+  // Set eased gradient stops (fractions of max opacity for smooth roll-off)
+  bannerScrim.style.setProperty('--scrim-opacity',   scrimOpacity);
+  bannerScrim.style.setProperty('--scrim-opacity-b', scrimOpacity * 0.62);
+  bannerScrim.style.setProperty('--scrim-opacity-c', scrimOpacity * 0.26);
+  bannerScrim.style.setProperty('--scrim-opacity-d', scrimOpacity * 0.06);
   bannerText.classList.remove('light', 'dark');
   bannerText.classList.add(textScheme);
-  // WCAG contrast: white text on light-scheme, near-black (#111) on dark-scheme
-  const textLum      = textScheme === 'light' ? 1.0 : hexToLuminance('#111111');
-  const effectiveBgLum = textScheme === 'light' ? lum * (1 - scrimOpacity * 0.84) : lum;
+  bannerWrapper.classList.toggle('scheme-dark', textScheme === 'dark');
+  // WCAG: factor in scrim darkening the effective background luminance
+  const textLum = textScheme === 'light' ? 1.0 : hexToLuminance('#111111');
+  const effectiveBgLum = lum * (1 - scrimOpacity * 0.85);
   const lighter = Math.max(effectiveBgLum, textLum);
   const darker  = Math.min(effectiveBgLum, textLum);
   const contrast = (lighter + 0.05) / (darker + 0.05);
@@ -1057,6 +1099,28 @@ function applyColor(hex) {
 }
 
 colorInput.addEventListener('input', e => applyColor(e.target.value));
+
+// ─── Colour scrim controls ────────────────────────────────────────────────────
+
+let colourScrimEnabled = false;
+let colourScrimLevel   = 40;
+
+const colourScrimToggle = document.getElementById('colour-scrim-toggle');
+const colourScrimSlider = document.getElementById('colour-scrim-slider');
+const colourScrimVal    = document.getElementById('colour-scrim-val');
+
+colourScrimToggle.addEventListener('change', () => {
+  colourScrimEnabled = colourScrimToggle.checked;
+  colourScrimSlider.disabled = !colourScrimEnabled;
+  colourScrimVal.classList.toggle('dim', !colourScrimEnabled);
+  applyColor(colorInput.value);
+});
+
+colourScrimSlider.addEventListener('input', () => {
+  colourScrimLevel = parseInt(colourScrimSlider.value);
+  colourScrimVal.textContent = colourScrimLevel;
+  applyColor(colorInput.value);
+});
 
 // ─── Image mode ───────────────────────────────────────────────────────────────
 
