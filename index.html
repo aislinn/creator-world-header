@@ -97,7 +97,7 @@
     align-items: flex-start;
     gap: 0;
     padding: 14px 24px;
-    height: 158px;        /* locked — never grows or shrinks between modes */
+    height: 210px;        /* locked — never grows or shrinks between modes */
     overflow: hidden;
   }
   .fc-body.hidden { display: none; }
@@ -704,7 +704,7 @@
   }
 
   /* Body padding so content isn't hidden behind the bar */
-  body { padding-bottom: 160px; }
+  body { padding-bottom: 220px; }
 
 </style>
 </head>
@@ -732,8 +732,8 @@
       <div class="control-group">
         <div class="fc-section-label">Light→Dark cutoff</div>
         <div class="threshold-row">
-          <input type="range" id="threshold-slider" min="0" max="100" step="1" value="65">
-          <span class="threshold-val" id="threshold-val">65</span>
+          <input type="range" id="threshold-slider" min="0" max="100" step="1" value="66">
+          <span class="threshold-val" id="threshold-val">66</span>
         </div>
       </div>
     </div>
@@ -761,7 +761,24 @@
 
       <!-- Image upload: button + history thumbnails -->
       <div id="image-section">
-        <div class="fc-section-label">Image</div>
+        <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
+          <div class="fc-section-label" style="margin-bottom:2px;">Image</div>
+          <div class="threshold-row" style="gap:7px;">
+            <span class="fc-section-label" style="margin-bottom:0; min-width:54px;">Vividness</span>
+            <input type="range" id="img-vivid-slider" min="0" max="100" step="1" value="50" style="width:120px; accent-color:white; cursor:pointer;">
+            <span class="threshold-val" id="img-vivid-val">50</span>
+          </div>
+          <div class="threshold-row" style="gap:7px;">
+            <span class="fc-section-label" style="margin-bottom:0; min-width:54px;">Hue shift</span>
+            <input type="range" id="img-hue-slider" min="-90" max="90" step="1" value="0" style="width:120px; accent-color:white; cursor:pointer;">
+            <span class="threshold-val" id="img-hue-val">0°</span>
+          </div>
+          <div class="threshold-row" style="gap:7px;">
+            <span class="fc-section-label" style="margin-bottom:0; min-width:54px;">Warmth</span>
+            <input type="range" id="img-warm-slider" min="-50" max="50" step="1" value="0" style="width:120px; accent-color:white; cursor:pointer;">
+            <span class="threshold-val" id="img-warm-val">0</span>
+          </div>
+        </div>
         <div class="control-group" id="image-upload-area">
           <button class="upload-btn" id="upload-btn">Choose image…</button>
           <div id="history-strip">
@@ -979,7 +996,7 @@ function sampleImageBottomColor(imgEl, regionFraction = 0.25) {
   } catch { return null; }
 }
 
-let DARK_TEXT_THRESHOLD = 0.65;
+let DARK_TEXT_THRESHOLD = 0.66;
 
 function computeTextScheme(luminance) {
   return luminance > DARK_TEXT_THRESHOLD ? 'dark' : 'light';
@@ -1020,8 +1037,9 @@ const statWcag      = document.getElementById('stat-wcag');
 function applyLuminance(luminance) {
   if (luminance === null) return;
 
-  const textScheme  = computeTextScheme(luminance);
-  const scrimOpacity = textScheme === 'light' ? computeScrimOpacity(luminance) : 0;
+  const textScheme = computeTextScheme(luminance);
+  const wcagMin     = textScheme === 'light' ? computeScrimOpacity(luminance) : 0;
+  const scrimOpacity = textScheme === 'light' ? wcagMin : 0;
   const wcagAA      = textScheme === 'dark' ? true : meetsWcagAA(luminance, scrimOpacity);
 
   // Apply scrim via CSS custom property
@@ -1050,15 +1068,20 @@ function applyImageLegibility(imgEl) {
   const color = sampleImageBottomColor(imgEl);
   const [r, g, b] = color ?? [128, 128, 128];
 
-  // Build scrim colour: same hue, saturation boosted, lightness reduced.
-  // Plain RGB scaling (×0.25) muddies the colour by collapsing toward grey-black.
-  // HSL lets us darken while keeping — or intensifying — the chroma.
+  // Build scrim colour from image sample, then apply the three tone controls.
   const [h, s, l] = rgbToHsl(r, g, b);
-  const [dr, dg, db] = hslToRgb(
-    h,
-    Math.min(s * 1.4, 1.0),   // boost saturation ~40 %, cap at 1
-    Math.max(l * 0.28, 0.04)  // darken to ~28 % of original lightness
-  );
+
+  // 1. Vividness: 0 = grey scrim, 50 = default (s×1.4), 100 = vivid (s×2.8)
+  const satMult = (imageVividness / 50) * 1.4;
+  const finalSat = Math.min(s * satMult, 1.0);
+
+  // 2. Hue shift: ±90° rotation around the colour wheel
+  const hueShifted = ((h + imageHueShift / 360) % 1 + 1) % 1;
+
+  // 3. Warmth: positive nudges toward orange/red, negative toward blue/purple
+  const finalH = ((hueShifted + (imageWarmth / 100) * 0.12) % 1 + 1) % 1;
+
+  const [dr, dg, db] = hslToRgb(finalH, finalSat, Math.max(l * 0.28, 0.04));
 
   bannerScrim.style.setProperty('--scrim-r', dr);
   bannerScrim.style.setProperty('--scrim-g', dg);
@@ -1145,6 +1168,44 @@ colorInput.addEventListener('input', e => applyColor(e.target.value));
 // ─── Colour scrim controls ────────────────────────────────────────────────────
 
 let colourScrimEnabled = true;
+
+// ─── Image scrim tone controls ───────────────────────────────────────────────
+
+let imageVividness = 50;
+let imageHueShift  = 0;
+let imageWarmth    = 0;
+
+function resetImageToneControls() {
+  imageVividness = 50; imageHueShift = 0; imageWarmth = 0;
+  document.getElementById('img-vivid-slider').value = 50;
+  document.getElementById('img-hue-slider').value   = 0;
+  document.getElementById('img-warm-slider').value  = 0;
+  document.getElementById('img-vivid-val').textContent = '50';
+  document.getElementById('img-hue-val').textContent   = '0°';
+  document.getElementById('img-warm-val').textContent  = '0';
+}
+
+function reapplyIfImageLoaded() {
+  if (bannerWrapper.classList.contains('mode-image') && bannerImage.complete && bannerImage.naturalWidth > 0) {
+    applyImageLegibility(bannerImage);
+  }
+}
+
+document.getElementById('img-vivid-slider').addEventListener('input', e => {
+  imageVividness = parseInt(e.target.value);
+  document.getElementById('img-vivid-val').textContent = imageVividness;
+  reapplyIfImageLoaded();
+});
+document.getElementById('img-hue-slider').addEventListener('input', e => {
+  imageHueShift = parseInt(e.target.value);
+  document.getElementById('img-hue-val').textContent = imageHueShift + '°';
+  reapplyIfImageLoaded();
+});
+document.getElementById('img-warm-slider').addEventListener('input', e => {
+  imageWarmth = parseInt(e.target.value);
+  document.getElementById('img-warm-val').textContent = imageWarmth;
+  reapplyIfImageLoaded();
+});
 
 const colourScrimToggle = document.getElementById('colour-scrim-toggle');
 const scrimTooltipEl = document.getElementById('scrim-tooltip');
@@ -1244,6 +1305,7 @@ function applyHistoryEntry(entry, thumbEl) {
     bannerText.classList.remove('solid-color');
     bannerBg.style.background = 'transparent';
     bannerImage.style.display = 'block';
+    resetImageToneControls();
     applyImageLegibility(bannerImage);
   });
 }
@@ -1275,6 +1337,7 @@ uploadBtn.addEventListener('click', () => {
         bannerWrapper.classList.replace('mode-color', 'mode-image');
         bannerBg.style.background = 'transparent';
         bannerImage.style.display = 'block';
+        resetImageToneControls();
         applyImageLegibility(bannerImage);
         addToHistory(dataUrl, bannerImage);
       });
