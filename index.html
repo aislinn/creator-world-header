@@ -262,16 +262,21 @@
     );
   }
 
-  /* Image: dual gradient — both layers use the darkened image colour, not pure black */
+  /* Image: dual gradient — eased multi-stop for a natural roll-off */
   .banner-wrapper.mode-image #banner-scrim {
     background:
       linear-gradient(to top,
-        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.80) 0%,
-        transparent 58%
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.80)  0%,
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.60) 18%,
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.28) 40%,
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.06) 58%,
+        transparent 68%
       ),
       linear-gradient(to top,
-        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), var(--scrim-opacity, 0.45)) 0%,
-        transparent 90%
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), var(--scrim-opacity, 0.45))  0%,
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.20) 55%,
+        rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), 0.04) 82%,
+        transparent 95%
       );
   }
 
@@ -354,8 +359,11 @@
   /* Dark scheme on images: light wash + opaque chips + white glow to separate from busy bg */
   .banner-wrapper.scheme-dark.mode-image #banner-scrim {
     background: linear-gradient(to top,
-      rgba(var(--scrim-lr, 255), var(--scrim-lg, 255), var(--scrim-lb, 255), 0.70) 0%,
-      transparent 85%
+      rgba(var(--scrim-lr, 255), var(--scrim-lg, 255), var(--scrim-lb, 255), 0.70)  0%,
+      rgba(var(--scrim-lr, 255), var(--scrim-lg, 255), var(--scrim-lb, 255), 0.50) 20%,
+      rgba(var(--scrim-lr, 255), var(--scrim-lg, 255), var(--scrim-lb, 255), 0.22) 42%,
+      rgba(var(--scrim-lr, 255), var(--scrim-lg, 255), var(--scrim-lb, 255), 0.05) 62%,
+      transparent 75%
     );
   }
   .banner-wrapper.scheme-dark.mode-image #banner-text.dark .chip {
@@ -563,6 +571,7 @@
     border: none;
     cursor: pointer;
     white-space: nowrap;
+    width: 175px;
   }
   .btn-follow {
     background: white;
@@ -771,7 +780,7 @@
       <div class="profile-links">www.instagram.com + 3 more</div>
       <div class="profile-actions">
         <button class="btn-follow">Follow</button>
-        <button class="btn-member">Become a member</button>
+        <button class="btn-member">Subscribe</button>
       </div>
     </div>
     <div class="profile-stats-row">
