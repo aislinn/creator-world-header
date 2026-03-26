@@ -145,6 +145,7 @@
     width: 56px; height: 40px; border: none; border-radius: 8px;
     cursor: pointer; padding: 2px; background: #2a2a2a;
   }
+
   /* Compact picker swatch inside the panel label row */
   #color-input {
     width: 28px; height: 28px; border-radius: 5px; padding: 2px;
@@ -210,9 +211,6 @@
   }
   .toggle-switch input:checked + .toggle-track { background: rgba(255,255,255,0.45); }
   .toggle-switch input:checked + .toggle-track::after { background: white; transform: translateX(12px); }
-  #colour-scrim-slider { width: 100px; accent-color: white; cursor: pointer; }
-  #colour-scrim-slider:disabled { opacity: 0.25; cursor: not-allowed; }
-  #colour-scrim-val.dim { opacity: 0.3; }
 
   /* ── Image history strip ── */
   #history-strip {
@@ -285,14 +283,14 @@
     transition: --scrim-opacity 0.3s;
   }
 
-  /* Solid colour: eased multi-stop scrim, same shape as image mode */
+  /* Solid colour: eased multi-stop scrim, colour-tinted via --scrim-r/g/b */
   .banner-wrapper.mode-color #banner-scrim {
     background: linear-gradient(to top,
-      rgba(0, 0, 0, var(--scrim-opacity,   0))  0%,
-      rgba(0, 0, 0, var(--scrim-opacity-b, 0)) 22%,
-      rgba(0, 0, 0, var(--scrim-opacity-c, 0)) 44%,
-      rgba(0, 0, 0, var(--scrim-opacity-d, 0)) 62%,
-      transparent                              74%
+      rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), var(--scrim-opacity,   0))  0%,
+      rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), var(--scrim-opacity-b, 0)) 22%,
+      rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), var(--scrim-opacity-c, 0)) 44%,
+      rgba(var(--scrim-r, 0), var(--scrim-g, 0), var(--scrim-b, 0), var(--scrim-opacity-d, 0)) 62%,
+      transparent                                                                               74%
     );
   }
 
@@ -723,7 +721,7 @@
 
       <!-- Solid colour: picker + swatches + scrim toggle -->
       <div id="colour-section">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <div class="fc-section-label" style="margin-bottom:0;">Colour</div>
             <input type="color" id="color-input" value="#6a5acd">
@@ -734,8 +732,6 @@
               <input type="checkbox" id="colour-scrim-toggle">
               <span class="toggle-track"></span>
             </label>
-            <input type="range" id="colour-scrim-slider" min="0" max="100" step="1" value="40" disabled>
-            <span class="threshold-val dim" id="colour-scrim-val">40</span>
           </div>
         </div>
         <div class="swatch-grid" id="swatch-grid"></div>
@@ -1070,8 +1066,23 @@ function applyColor(hex) {
   bannerText.classList.add('solid-color');
   const lum = hexToLuminance(hex);
   const textScheme = lum > 0.40 ? 'dark' : 'light';
-  // Use manually set scrim when toggled on, otherwise none
-  const scrimOpacity = colourScrimEnabled ? colourScrimLevel / 100 : 0;
+
+  // Derive a tinted dark colour from the selected hex — same HSL trick as image mode
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const [dr, dg, db] = hslToRgb(h, Math.min(s * 1.4, 1.0), Math.max(l * 0.28, 0.04));
+  bannerScrim.style.setProperty('--scrim-r', dr);
+  bannerScrim.style.setProperty('--scrim-g', dg);
+  bannerScrim.style.setProperty('--scrim-b', db);
+
+  // Baseline scrim for visual consistency; bumped up to the WCAG AA minimum for light-text colours only.
+  // Dark-text colours already pass without help, and a dark scrim would reduce their contrast.
+  const SCRIM_BASELINE = 0.30;
+  const wcagMin = textScheme === 'light' && lum > 0.1833
+    ? Math.min((1 - 0.1833 / lum) / 0.85, 0.90) : 0;
+  const scrimOpacity = colourScrimEnabled ? Math.max(SCRIM_BASELINE, wcagMin) : 0;
   // Set eased gradient stops (fractions of max opacity for smooth roll-off)
   bannerScrim.style.setProperty('--scrim-opacity',   scrimOpacity);
   bannerScrim.style.setProperty('--scrim-opacity-b', scrimOpacity * 0.62);
@@ -1103,22 +1114,11 @@ colorInput.addEventListener('input', e => applyColor(e.target.value));
 // ─── Colour scrim controls ────────────────────────────────────────────────────
 
 let colourScrimEnabled = false;
-let colourScrimLevel   = 40;
 
 const colourScrimToggle = document.getElementById('colour-scrim-toggle');
-const colourScrimSlider = document.getElementById('colour-scrim-slider');
-const colourScrimVal    = document.getElementById('colour-scrim-val');
 
 colourScrimToggle.addEventListener('change', () => {
   colourScrimEnabled = colourScrimToggle.checked;
-  colourScrimSlider.disabled = !colourScrimEnabled;
-  colourScrimVal.classList.toggle('dim', !colourScrimEnabled);
-  applyColor(colorInput.value);
-});
-
-colourScrimSlider.addEventListener('input', () => {
-  colourScrimLevel = parseInt(colourScrimSlider.value);
-  colourScrimVal.textContent = colourScrimLevel;
   applyColor(colorInput.value);
 });
 
