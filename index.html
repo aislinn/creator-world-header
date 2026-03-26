@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Banner Legibility — Interactive Demo</title>
+<title>CWH Header</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: #0d0d0d;
+    background: #121212;
     color: white;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     min-height: 100vh;
@@ -56,13 +56,14 @@
   /* ── Floating controls panel — bottom bar ── */
   .floating-controls {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
     z-index: 1000;
     background: #1a1a1a;
-    border-top: 1px solid rgba(255,255,255,0.12);
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
   }
   .fc-header {
     display: flex;
@@ -121,7 +122,7 @@
     color: rgba(255,255,255,0.3);
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    margin-bottom: 2px;
+    margin-bottom: 8px;
   }
   /* Controls within a section flow horizontally */
   .fc-section-row {
@@ -136,9 +137,9 @@
     width: 320px;
     flex-shrink: 0;
   }
-  #colour-section { display: block; }
-  #image-section  { display: none; }
-  .control-group { display: flex; flex-direction: column; gap: 8px; }
+  #colour-section { display: none; }
+  #image-section  { display: block; }
+  .control-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
   label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; text-transform: uppercase; }
   input[type="color"] {
     width: 56px; height: 40px; border: none; border-radius: 8px;
@@ -193,8 +194,10 @@
   }
   #history-strip.visible { display: flex; }
   .history-label {
-    font-size: 11px;
-    color: rgba(255,255,255,0.35);
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -626,7 +629,7 @@
   /* Colour debug — same grid/card as stats, always occupies space (visibility not display) */
   .fc-body .colour-debug {
     display: grid;
-    grid-template-columns: repeat(2, 100px);
+    grid-template-columns: 100px;
     gap: 6px;
     margin-bottom: 0;
     visibility: hidden;   /* takes up space but invisible until image is loaded */
@@ -645,7 +648,7 @@
   .fc-body .swatch-grid { flex-wrap: wrap; max-width: 220px; gap: 6px; }
 
   /* Body padding so content isn't hidden behind the bar */
-  body { padding-bottom: 130px; }
+  body { padding-bottom: 160px; }
 
   @media (max-width: 640px) {
     .profile-header { flex-direction: column; gap: 24px; }
@@ -662,7 +665,7 @@
 <!-- Floating controls panel -->
 <div class="floating-controls" id="floating-controls">
   <div class="fc-header">
-    <span class="fc-title">Banner Demo</span>
+    <span class="fc-title">Header Settings</span>
     <button class="fc-toggle" id="fc-toggle" title="Collapse controls">▾</button>
   </div>
   <div class="fc-body" id="fc-body">
@@ -671,14 +674,14 @@
     <div class="fc-section">
       <div class="fc-section-label">Mode</div>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="btn-color">Solid colour</button>
-        <button class="mode-btn" id="btn-image">Image upload</button>
+        <button class="mode-btn active" id="btn-image">Image upload</button>
+        <button class="mode-btn" id="btn-color">Solid colour</button>
       </div>
       <div class="control-group">
-        <label>Light→Dark cutoff</label>
+        <div class="fc-section-label">Light→Dark cutoff</div>
         <div class="threshold-row">
-          <input type="range" id="threshold-slider" min="0.20" max="0.70" step="0.01" value="0.65">
-          <span class="threshold-val" id="threshold-val">0.65</span>
+          <input type="range" id="threshold-slider" min="0" max="100" step="1" value="65">
+          <span class="threshold-val" id="threshold-val">65</span>
         </div>
       </div>
     </div>
@@ -691,9 +694,9 @@
       <!-- Solid colour: picker + swatches -->
       <div id="colour-section">
         <div class="fc-section-label">Colour</div>
-        <div class="fc-section-row" style="align-items: flex-end;">
+        <div class="fc-section-row" style="align-items: flex-start;">
           <div class="control-group" id="color-picker-area">
-            <input type="color" id="color-input" value="#ff6d6d">
+            <input type="color" id="color-input" value="#6a5acd">
           </div>
           <div class="swatch-grid" id="swatch-grid"></div>
         </div>
@@ -1240,8 +1243,8 @@ const thresholdSlider = document.getElementById('threshold-slider');
 const thresholdVal    = document.getElementById('threshold-val');
 
 thresholdSlider.addEventListener('input', () => {
-  DARK_TEXT_THRESHOLD = parseFloat(thresholdSlider.value);
-  thresholdVal.textContent = DARK_TEXT_THRESHOLD.toFixed(2);
+  DARK_TEXT_THRESHOLD = parseInt(thresholdSlider.value) / 100;
+  thresholdVal.textContent = thresholdSlider.value;
   // Re-run the current mode so the banner updates immediately
   if (bannerWrapper.classList.contains('mode-image') && bannerImage.complete && bannerImage.naturalWidth > 0) {
     applyImageLegibility(bannerImage);
